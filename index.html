@@ -195,6 +195,7 @@
       <a href="contact.html">Contact</a>
     </nav>
     <div class="nav-right">
+      <button class="icon-btn" onclick="openAccount()" aria-label="Account">👤</button>
       <button class="icon-btn" onclick="openCart()" aria-label="Open cart">
         🛍<span class="cart-count" id="cartCount" style="display:none;">0</span>
       </button>
@@ -340,21 +341,52 @@
 
 <div class="checkout-view" id="checkoutView"><div id="checkoutContent"></div></div>
 
+<div class="checkout-view" id="detailView"><div id="detailContent"></div></div>
+
+<div class="checkout-view" id="authView">
+  <div class="checkout-head">
+    <button class="back-btn" onclick="closeAuth()">←</button>
+    <h2 id="authTitle">Sign In</h2>
+  </div>
+  <div class="checkout-body">
+    <p style="font-size:14px; color:var(--ink-soft); margin-bottom:20px;" id="authNote">Sign in to place an order and view your order history.</p>
+    <div class="form-group"><label>Email</label><input type="email" id="authEmail"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="authPassword"></div>
+    <div class="login-error" id="authError" style="color:var(--rust); font-size:12px; margin-bottom:12px;"></div>
+    <button class="btn-primary place-order-btn" id="authSubmitBtn" onclick="submitAuth()">Sign In</button>
+    <p style="text-align:center; font-size:13px; margin-top:16px;">
+      <a href="#" onclick="toggleAuthMode(); return false;" id="authToggleLink" style="text-decoration:underline;">New here? Create an account</a>
+    </p>
+  </div>
+</div>
+
+<div class="checkout-view" id="accountView">
+  <div class="checkout-head">
+    <button class="back-btn" onclick="closeAccount()">←</button>
+    <h2>My Account</h2>
+  </div>
+  <div class="checkout-body" id="accountContent"></div>
+</div>
+
 <script>
 /* ============================================================
    CONFIG — fill these in after creating your Supabase & Razorpay accounts
    (see SETUP.md for exact steps)
    ============================================================ */
-const SUPABASE_URL = 'https://camvsuouhadbeynnpmeo.supabase.co';        // e.g. https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = 'sb_publishable_l95Bb9_nA6SURRDwXcf0eg_wFcrxVtz';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';        // e.g. https://xxxx.supabase.co
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const RAZORPAY_KEY_ID = 'YOUR_RAZORPAY_KEY_ID';  // e.g. rzp_test_xxxxxxxx
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let PRODUCTS = [];
+let productById = {};
 let currentCat = 'All';
 let cart = {};
 let payMethod = 'online';
+let currentUser = null;
+let authMode = 'signin';
+let pendingCheckout = false;
 
 function textureBG(tex, color){
   if(tex==='oxford') return `repeating-linear-gradient(45deg, ${color}, ${color} 3px, ${shade(color,18)} 3px, ${shade(color,18)} 6px)`;
@@ -384,16 +416,11 @@ async function loadNewArrivals(){
     area.parentElement.style.display = 'none';
     return;
   }
+  data.forEach(p=>productById[p.id]=p);
   area.innerHTML = `<div class="grid">${data.map(p=>`
-    <div class="card" id="card-newp-${p.id}">
-      <div class="flip-hint" onclick="toggleFlip('newp-${p.id}', event)">↺</div>
+    <div class="card" onclick="openProductDetail('${p.id}')">
       <div class="card-face">
         <div class="swatch-front" style="${p.image_url ? `background-image:url('${p.image_url}'); background-size:cover; background-position:center;` : `background:${textureBG(p.texture,p.color)};`}"></div>
-        <div class="swatch-back">
-          <div class="tag-title">${p.name}</div>
-          <div class="mono">${p.fabric||''}</div>
-          <div class="mono">${p.fit||''}</div>
-        </div>
       </div>
       <div class="card-info">
         <div class="cat">${p.category}</div>
@@ -415,6 +442,7 @@ async function loadProducts(){
     return;
   }
   PRODUCTS = data;
+  data.forEach(p=>productById[p.id]=p);
   area.innerHTML = `<div class="grid" id="productGrid"></div>`;
   renderCatStrip();
   renderGrid();
@@ -440,17 +468,10 @@ function renderGrid(){
     const outOfStock = p.stock <= 0;
     const lowStock = p.stock > 0 && p.stock <= 3;
     return `
-    <div class="card" id="card-${p.id}">
+    <div class="card" id="card-${p.id}" onclick="openProductDetail('${p.id}')">
       ${outOfStock ? '<div class="stock-badge low">Sold Out</div>' : lowStock ? `<div class="stock-badge low">Only ${p.stock} left</div>` : ''}
-      <div class="flip-hint" onclick="toggleFlip('${p.id}', event)">↺</div>
       <div class="card-face">
         <div class="swatch-front" style="${p.image_url ? `background-image:url('${p.image_url}'); background-size:cover; background-position:center;` : `background:${textureBG(p.texture,p.color)};`}"></div>
-        <div class="swatch-back">
-          <div class="tag-title">${p.name}</div>
-          <div class="mono">${p.fabric||''}</div>
-          <div class="mono">${p.fit||''}</div>
-          <div class="mono">${p.care||''}</div>
-        </div>
       </div>
       <div class="card-info">
         <div class="cat">${p.category}</div>
@@ -464,7 +485,31 @@ function renderGrid(){
   }).join('');
 }
 
-function toggleFlip(id, e){ e.stopPropagation(); document.getElementById('card-'+id).classList.toggle('flipped'); }
+function openProductDetail(id){
+  const p = productById[id];
+  if(!p) return;
+  const outOfStock = p.stock <= 0;
+  document.getElementById('detailContent').innerHTML = `
+    <div class="checkout-head">
+      <button class="back-btn" onclick="closeProductDetail()">←</button>
+      <h2>${p.name}</h2>
+    </div>
+    <div class="checkout-body">
+      <div style="width:100%; aspect-ratio:1/1; border-radius:4px; margin-bottom:20px; ${p.image_url ? `background-image:url('${p.image_url}'); background-size:cover; background-position:center;` : `background:${textureBG(p.texture,p.color)};`}"></div>
+      <div class="cat" style="font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--khaki-deep); margin-bottom:6px;">${p.category}</div>
+      <div class="price" style="font-size:20px; margin-bottom:18px;">₹${p.price}</div>
+      <div class="order-summary">
+        <div class="order-row"><span>Fabric</span><span class="mono" style="text-align:right;">${p.fabric||'—'}</span></div>
+        <div class="order-row"><span>Fit</span><span class="mono" style="text-align:right;">${p.fit||'—'}</span></div>
+        <div class="order-row"><span>Care</span><span class="mono" style="text-align:right;">${p.care||'—'}</span></div>
+      </div>
+      <button class="btn-primary place-order-btn" ${outOfStock?'disabled':''} onclick="addToCart('${p.id}', event); closeProductDetail(); openCart();">
+        ${outOfStock ? 'Sold Out' : 'Add to Bag'}
+      </button>
+    </div>`;
+  document.getElementById('detailView').classList.add('open');
+}
+function closeProductDetail(){ document.getElementById('detailView').classList.remove('open'); }
 
 function addToCart(id, e){
   e.stopPropagation();
@@ -521,7 +566,15 @@ function updateCartUI(){
 
 function openCart(){ document.getElementById('overlay').classList.add('open'); document.getElementById('drawer').classList.add('open'); }
 function closeCart(){ document.getElementById('overlay').classList.remove('open'); document.getElementById('drawer').classList.remove('open'); }
-function openCheckout(){ closeCart(); payMethod='online'; renderCheckout(); document.getElementById('checkoutView').classList.add('open'); }
+function openCheckout(){
+  if(!currentUser){
+    closeCart();
+    pendingCheckout = true;
+    openAuth('signin', 'Sign in to place your order.');
+    return;
+  }
+  closeCart(); payMethod='online'; renderCheckout(); document.getElementById('checkoutView').classList.add('open');
+}
 function closeCheckout(){ document.getElementById('checkoutView').classList.remove('open'); }
 function setPayMethod(m){ payMethod = m; renderCheckout(); }
 
@@ -567,7 +620,8 @@ async function saveOrder({orderNumber, name, phone, pin, addr, subtotal, shippin
   const { error } = await sb.from('orders').insert({
     order_number: orderNumber, customer_name: name, phone, pincode: pin, address: addr,
     items, subtotal, shipping, total,
-    payment_method: paymentMethod, payment_status: paymentStatus, razorpay_payment_id: razorpayId || null
+    payment_method: paymentMethod, payment_status: paymentStatus, razorpay_payment_id: razorpayId || null,
+    user_id: currentUser ? currentUser.id : null
   });
   if(error){ alert('Order failed to save: '+error.message); return false; }
   // reduce stock for each item (simple approach — fine for low-volume stores)
@@ -631,9 +685,101 @@ function showSuccess(name, orderNumber){
     </div>`;
 }
 
+/* ===================== AUTH ===================== */
+function openAuth(mode, note){
+  authMode = mode;
+  document.getElementById('authTitle').textContent = mode==='signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('authSubmitBtn').textContent = mode==='signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('authToggleLink').textContent = mode==='signin' ? 'New here? Create an account' : 'Already have an account? Sign in';
+  document.getElementById('authNote').textContent = note || (mode==='signin' ? 'Sign in to continue.' : 'Create an account to place orders and track them.');
+  document.getElementById('authError').textContent = '';
+  document.getElementById('authEmail').value = '';
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authView').classList.add('open');
+}
+function closeAuth(){
+  document.getElementById('authView').classList.remove('open');
+  pendingCheckout = false;
+}
+function toggleAuthMode(){
+  openAuth(authMode==='signin' ? 'signup' : 'signin');
+}
+
+async function submitAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authError');
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Please fill in both fields.'; return; }
+
+  if(authMode==='signup'){
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if(error){ errEl.textContent = error.message; return; }
+    currentUser = data.user;
+  } else {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ errEl.textContent = error.message; return; }
+    currentUser = data.user;
+  }
+
+  closeAuth();
+  if(pendingCheckout){
+    pendingCheckout = false;
+    payMethod = 'online';
+    renderCheckout();
+    document.getElementById('checkoutView').classList.add('open');
+  }
+}
+
+async function signOutCustomer(){
+  await sb.auth.signOut();
+  currentUser = null;
+  closeAccount();
+}
+
+/* ===================== ACCOUNT / ORDER HISTORY ===================== */
+function openAccount(){
+  if(!currentUser){
+    openAuth('signin', 'Sign in to view your account and order history.');
+    return;
+  }
+  document.getElementById('accountView').classList.add('open');
+  renderAccount();
+}
+function closeAccount(){ document.getElementById('accountView').classList.remove('open'); }
+
+async function renderAccount(){
+  const content = document.getElementById('accountContent');
+  content.innerHTML = `
+    <div class="order-summary" style="margin-bottom:20px;">
+      <div style="font-family:'Fraunces',serif; font-size:16px; margin-bottom:4px;">${currentUser.email}</div>
+      <button class="btn-ghost" style="margin-top:10px; padding:8px 16px; font-size:13px;" onclick="signOutCustomer()">Sign Out</button>
+    </div>
+    <h3 class="serif" style="font-size:18px; margin-bottom:14px;">My Orders</h3>
+    <div id="myOrdersArea"><div class="loading">Loading…</div></div>`;
+
+  const { data, error } = await sb.from('orders').select('*').eq('user_id', currentUser.id).order('created_at', {ascending:false});
+  const area = document.getElementById('myOrdersArea');
+  if(error){ area.innerHTML = '<p style="color:var(--rust); font-size:13px;">Could not load orders.</p>'; return; }
+  if(!data.length){ area.innerHTML = '<p style="font-size:13px; color:var(--ink-soft);">No orders yet.</p>'; return; }
+
+  area.innerHTML = data.map(o=>`
+    <div class="order-summary" style="margin-bottom:14px;">
+      <div class="order-row"><span class="mono">#${o.order_number}</span><span class="mono" style="text-transform:capitalize;">${o.order_status}</span></div>
+      <div class="order-row"><span>${o.items.map(i=>i.name+' ×'+i.qty).join(', ')}</span></div>
+      <div class="order-row total"><span>Total</span><span class="mono">₹${o.total}</span></div>
+    </div>`).join('');
+}
+
+async function initAuth(){
+  const { data: { session } } = await sb.auth.getSession();
+  currentUser = session ? session.user : null;
+}
+
 loadProducts();
 loadNewArrivals();
 updateCartUI();
+initAuth();
 </script>
 </body>
 </html>
