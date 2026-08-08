@@ -350,6 +350,15 @@
   </div>
   <div class="checkout-body">
     <p style="font-size:14px; color:var(--ink-soft); margin-bottom:20px;" id="authNote">Sign in to place an order and view your order history.</p>
+
+    <button class="btn-ghost" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:18px;" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.1-5.1l-6.5-5.5C29.6 35.4 27 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.3-4.1 5.7l6.5 5.5C40.9 36.6 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+      Continue with Google
+    </button>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px; color:var(--khaki-deep); font-size:12px;">
+      <div style="flex:1; height:1px; background:var(--line);"></div>or<div style="flex:1; height:1px; background:var(--line);"></div>
+    </div>
+
     <div class="form-group"><label>Email</label><input type="email" id="authEmail"></div>
     <div class="form-group"><label>Password</label><input type="password" id="authPassword"></div>
     <div class="login-error" id="authError" style="color:var(--rust); font-size:12px; margin-bottom:12px;"></div>
@@ -373,8 +382,8 @@
    CONFIG — fill these in after creating your Supabase & Razorpay accounts
    (see SETUP.md for exact steps)
    ============================================================ */
-const SUPABASE_URL = 'https://camvsuouhadbeynnpmeo.supabase.co';        // e.g. https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = 'sb_publishable_l95Bb9_nA6SURRDwXcf0eg_wFcrxVtz';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';        // e.g. https://xxxx.supabase.co
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const RAZORPAY_KEY_ID = 'YOUR_RAZORPAY_KEY_ID';  // e.g. rzp_test_xxxxxxxx
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -512,15 +521,18 @@ function openProductDetail(id){
 function closeProductDetail(){ document.getElementById('detailView').classList.remove('open'); }
 
 function addToCart(id, e){
-  e.stopPropagation();
-  const p = PRODUCTS.find(p=>p.id===id);
+  if(e) e.stopPropagation();
+  const p = PRODUCTS.find(p=>p.id===id) || productById[id];
   const inCart = cart[id]?.qty || 0;
   if(inCart >= p.stock){ alert('Only '+p.stock+' in stock.'); return; }
   cart[id] = { qty: inCart+1, product: p };
   updateCartUI();
+  saveCartToStorage();
   const btn = document.getElementById('add-'+id);
-  btn.classList.add('added'); btn.textContent='✓';
-  setTimeout(()=>{ btn.classList.remove('added'); btn.textContent='+'; }, 900);
+  if(btn){
+    btn.classList.add('added'); btn.textContent='✓';
+    setTimeout(()=>{ btn.classList.remove('added'); btn.textContent='+'; }, 900);
+  }
 }
 function changeQty(id, delta){
   const item = cart[id];
@@ -528,8 +540,9 @@ function changeQty(id, delta){
   item.qty += delta;
   if(item.qty <= 0) delete cart[id];
   updateCartUI();
+  saveCartToStorage();
 }
-function removeItem(id){ delete cart[id]; updateCartUI(); }
+function removeItem(id){ delete cart[id]; updateCartUI(); saveCartToStorage(); }
 function cartTotal(){ return Object.values(cart).reduce((s,i)=>s+i.product.price*i.qty,0); }
 function cartCount(){ return Object.values(cart).reduce((a,i)=>a+i.qty,0); }
 
@@ -681,7 +694,7 @@ function showSuccess(name, orderNumber){
       <div class="mark">✓</div>
       <h2 class="serif">Order Placed</h2>
       <p>Thanks, ${name.split(' ')[0]}. Your order <strong class="mono">#${orderNumber}</strong> is confirmed.</p>
-      <button class="btn-primary" onclick="closeCheckout(); cart={}; updateCartUI(); loadProducts();">Continue Shopping</button>
+      <button class="btn-primary" onclick="closeCheckout(); cart={}; localStorage.removeItem('em_cart'); updateCartUI(); loadProducts();">Continue Shopping</button>
     </div>`;
 }
 
@@ -731,6 +744,15 @@ async function submitAuth(){
   }
 }
 
+async function signInWithGoogle(){
+  // Google sign-in redirects away from the page and back, so save
+  // the cart and "was trying to checkout" state before leaving.
+  saveCartToStorage();
+  if(pendingCheckout){ localStorage.setItem('em_pending_checkout', '1'); }
+  const cleanUrl = window.location.href.split('#')[0].split('?')[0];
+  await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: cleanUrl } });
+}
+
 async function signOutCustomer(){
   await sb.auth.signOut();
   currentUser = null;
@@ -776,10 +798,37 @@ async function initAuth(){
   currentUser = session ? session.user : null;
 }
 
-loadProducts();
-loadNewArrivals();
-updateCartUI();
-initAuth();
+function saveCartToStorage(){
+  const simple = {};
+  Object.entries(cart).forEach(([id,item])=>{ simple[id] = item.qty; });
+  localStorage.setItem('em_cart', JSON.stringify(simple));
+}
+function restoreCartFromStorage(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('em_cart') || '{}');
+    Object.entries(saved).forEach(([id,qty])=>{
+      const p = productById[id];
+      if(p && qty > 0) cart[id] = { qty, product: p };
+    });
+  }catch(e){}
+}
+
+async function init(){
+  await loadProducts();
+  await loadNewArrivals();
+  restoreCartFromStorage();
+  updateCartUI();
+  await initAuth();
+
+  // If we're back from a Google redirect mid-checkout, resume it
+  if(currentUser && localStorage.getItem('em_pending_checkout')==='1'){
+    localStorage.removeItem('em_pending_checkout');
+    payMethod = 'online';
+    renderCheckout();
+    document.getElementById('checkoutView').classList.add('open');
+  }
+}
+init();
 </script>
 </body>
 </html>
