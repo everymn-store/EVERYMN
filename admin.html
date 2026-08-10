@@ -96,8 +96,8 @@
 </div>
 
 <script>
-const SUPABASE_URL = 'https://camvsuouhadbeynnpmeo.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_l95Bb9_nA6SURRDwXcf0eg_wFcrxVtz';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentTab = 'dashboard';
@@ -299,12 +299,17 @@ async function loadStock(){
           <option value="twill">twill</option>
         </select>
       </div>
+      <div class="form-row">
+        <input type="text" id="new-sizes" placeholder="Sizes, comma-separated (S,M,L,XL)">
+        <input type="text" id="new-colors" placeholder="Colours, comma-separated (Black,Navy)">
+      </div>
+      <textarea id="new-description" placeholder="Product description / story"></textarea>
       <textarea id="new-images" placeholder="Photo URLs (comma-separated if more than one)"></textarea>
       <button class="form-submit" onclick="addProduct()" style="margin-top:10px;">Add Product</button>
     </div>
     <div class="table-wrap">
     <table>
-      <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Photos</th><th>Stock</th><th>Active</th><th></th></tr></thead>
+      <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Photos</th><th>Sizes</th><th>Colours</th><th>Stock</th><th>Active</th><th></th></tr></thead>
       <tbody>
         ${data.map(p=>`
           <tr class="${p.stock<=3 ? 'low-row' : ''}">
@@ -312,6 +317,8 @@ async function loadStock(){
             <td>${p.category}</td>
             <td><input type="number" class="stock-input" id="price-${p.id}" value="${p.price}" style="width:90px;"></td>
             <td><textarea id="image-${p.id}" placeholder="Photo URL(s), comma-separated" style="width:180px; font-size:11px; min-height:40px;">${(p.gallery && p.gallery.length ? [p.image_url].concat(p.gallery).filter(Boolean).join(', ') : (p.image_url||''))}</textarea></td>
+            <td><input type="text" id="sizes-${p.id}" value="${p.sizes||''}" placeholder="S,M,L" style="width:100px; font-size:12px;"></td>
+            <td><input type="text" id="colors-${p.id}" value="${p.colors||''}" placeholder="Black,Navy" style="width:110px; font-size:12px;"></td>
             <td><input type="number" class="stock-input" id="stock-${p.id}" value="${p.stock}"></td>
             <td><input type="checkbox" ${p.active?'checked':''} id="active-${p.id}"></td>
             <td style="white-space:nowrap;">
@@ -337,6 +344,9 @@ async function addProduct(){
   const fit = document.getElementById('new-fit').value.trim();
   const care = document.getElementById('new-care').value.trim();
   const texture = document.getElementById('new-texture').value;
+  const sizes = document.getElementById('new-sizes').value.trim();
+  const colors = document.getElementById('new-colors').value.trim();
+  const description = document.getElementById('new-description').value.trim();
   const imagesRaw = document.getElementById('new-images').value.trim();
   const images = imagesRaw ? imagesRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
 
@@ -349,6 +359,7 @@ async function addProduct(){
     name, category, price, stock,
     fabric: fabric || null, fit: fit || null, care: care || null,
     texture, color: '#3A352E',
+    sizes: sizes || null, colors: colors || null, description: description || null,
     image_url: images[0] || null,
     gallery: images.length > 1 ? images.slice(1) : [],
     active: true
@@ -368,11 +379,14 @@ async function deleteProduct(id, name){
 async function saveProduct(id){
   const stock = parseInt(document.getElementById('stock-'+id).value, 10);
   const price = parseInt(document.getElementById('price-'+id).value, 10);
+  const sizes = document.getElementById('sizes-'+id).value.trim();
+  const colors = document.getElementById('colors-'+id).value.trim();
   const imagesRaw = document.getElementById('image-'+id).value.trim();
   const images = imagesRaw ? imagesRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
   const active = document.getElementById('active-'+id).checked;
   const { error } = await sb.from('products').update({
     stock, price,
+    sizes: sizes || null, colors: colors || null,
     image_url: images[0] || null,
     gallery: images.length > 1 ? images.slice(1) : [],
     active
