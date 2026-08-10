@@ -18,6 +18,7 @@
   .mono{font-family:'IBM Plex Mono',monospace;}
   a{color:inherit; text-decoration:none;}
   button{font-family:inherit; cursor:pointer; border:none; background:none;}
+  textarea, input{font-family:inherit;}
 
   header{position:sticky; top:0; z-index:100; background:rgba(250,247,241,.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--line);}
   .nav-wrap{max-width:1240px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:16px 20px;}
@@ -31,21 +32,34 @@
   .crumb{max-width:1000px; margin:0 auto; padding:16px 20px 0; font-size:13px; color:var(--khaki-deep);}
   .crumb a:hover{color:var(--rust);}
 
-  .wrap{max-width:1000px; margin:0 auto; padding:20px 20px 80px; display:grid; gap:34px;}
+  .wrap{max-width:1000px; margin:0 auto; padding:20px 20px 10px; display:grid; gap:34px;}
   @media(min-width:800px){.wrap{grid-template-columns:1fr 1fr; align-items:start;}}
 
   .product-image{width:100%; aspect-ratio:1/1; border-radius:6px; background:var(--white); border:1px solid var(--line);}
   .stock-badge{display:inline-block; margin-top:12px; font-size:11px; font-family:'IBM Plex Mono',monospace; padding:4px 10px; border-radius:10px; background:var(--rust); color:#fff;}
 
   .cat{font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--khaki-deep); margin-bottom:8px;}
-  h1{font-family:'Fraunces',serif; font-size:clamp(26px,4vw,36px); font-weight:500; margin-bottom:14px;}
-  .price{font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; margin-bottom:26px;}
+  h1{font-family:'Fraunces',serif; font-size:clamp(26px,4vw,36px); font-weight:500; margin-bottom:10px;}
+  .rating-line{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:16px;}
+  .rating-line .stars{color:var(--rust); letter-spacing:1px;}
+  .price{font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; margin-bottom:24px;}
 
-  .spec-table{background:var(--white); border:1px solid var(--line); border-radius:6px; padding:18px; margin-bottom:24px;}
+  .option-block{margin-bottom:22px;}
+  .option-label{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--khaki-deep); margin-bottom:10px;}
+  .size-row, .color-row{display:flex; flex-wrap:wrap; gap:10px;}
+  .size-btn{min-width:44px; height:44px; padding:0 12px; border:1px solid var(--line); border-radius:4px; background:var(--white); font-size:14px; font-weight:500;}
+  .size-btn.active{border-color:var(--ink); background:var(--ink); color:var(--bone);}
+  .color-btn{display:flex; align-items:center; gap:7px; padding:8px 14px 8px 8px; border:1px solid var(--line); border-radius:20px; background:var(--white); font-size:13px;}
+  .color-btn.active{border-color:var(--ink); background:var(--bone);}
+  .color-dot{width:18px; height:18px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:0 0 auto;}
+
+  .spec-table{background:var(--white); border:1px solid var(--line); border-radius:6px; padding:18px; margin-bottom:20px;}
   .spec-row{display:flex; justify-content:space-between; gap:16px; padding:9px 0; font-size:14px; border-bottom:1px solid var(--line);}
   .spec-row:last-child{border-bottom:none;}
   .spec-row .label{color:var(--khaki-deep); font-size:12px; text-transform:uppercase; letter-spacing:.05em; flex:0 0 auto;}
   .spec-row .val{font-family:'IBM Plex Mono',monospace; text-align:right;}
+
+  .description-text{font-size:14px; line-height:1.7; color:var(--ink-soft); margin-bottom:24px;}
 
   .qty-row{display:flex; align-items:center; gap:14px; margin-bottom:20px;}
   .qty-btn{width:34px; height:34px; border:1px solid var(--line); border-radius:50%; font-size:16px; display:flex; align-items:center; justify-content:center; background:var(--white);}
@@ -54,11 +68,45 @@
   .btn-primary{background:var(--ink); color:var(--bone); padding:16px 28px; font-size:15px; font-weight:600; border-radius:2px; transition:.2s; width:100%;}
   .btn-primary:hover{background:var(--rust);}
   .btn-primary:disabled{opacity:.4; cursor:not-allowed;}
+  .btn-ghost{border:1px solid var(--ink); padding:10px 18px; font-size:13px; font-weight:600; border-radius:2px;}
   .added-note{margin-top:12px; font-size:13px; color:var(--moss); display:none; text-align:center;}
   .added-note.show{display:block;}
+  .size-warn{font-size:12px; color:var(--rust); margin-top:8px; display:none;}
+  .size-warn.show{display:block;}
 
   .loading, .error-msg{padding:80px 20px; text-align:center; color:var(--ink-soft);}
   .error-msg{color:var(--rust);}
+
+  /* Sections below main product */
+  .section{max-width:1000px; margin:0 auto; padding:40px 20px;}
+  .section-title{font-family:'Fraunces',serif; font-size:22px; font-weight:500; margin-bottom:20px;}
+
+  .review-summary{display:flex; align-items:center; gap:16px; margin-bottom:24px; flex-wrap:wrap;}
+  .review-summary .big-rating{font-family:'Fraunces',serif; font-size:38px;}
+  .review-summary .stars{color:var(--rust); font-size:16px; letter-spacing:1px;}
+  .review-summary .count{font-size:13px; color:var(--khaki-deep);}
+
+  .review-card{background:var(--white); border:1px solid var(--line); border-radius:6px; padding:16px; margin-bottom:12px;}
+  .review-card .stars{color:var(--rust); font-size:13px; margin-bottom:6px; letter-spacing:1px;}
+  .review-card .rname{font-family:'Fraunces',serif; font-size:14px; margin-bottom:4px;}
+  .review-card .rtext{font-size:13px; color:var(--ink-soft); line-height:1.6;}
+  .review-card .rdate{font-size:11px; color:var(--khaki-deep); margin-top:6px;}
+
+  .write-review{background:var(--white); border:1px solid var(--line); border-radius:6px; padding:18px; margin-bottom:24px;}
+  .write-review textarea{width:100%; min-height:70px; padding:10px 12px; border:1px solid var(--line); border-radius:3px; font-size:13px; resize:vertical; margin-top:10px;}
+  .star-picker{display:flex; gap:6px; font-size:22px; cursor:pointer;}
+  .star-picker span{color:var(--line);}
+  .star-picker span.active{color:var(--rust);}
+  .login-prompt{font-size:13px; color:var(--ink-soft);}
+  .login-prompt a{text-decoration:underline;}
+
+  .rail{display:flex; gap:16px; overflow-x:auto; padding-bottom:6px; scrollbar-width:none;}
+  .rail::-webkit-scrollbar{display:none;}
+  .rail-card{flex:0 0 auto; width:160px; background:var(--white); border:1px solid var(--line); border-radius:4px; overflow:hidden;}
+  .rail-card .img{width:100%; height:160px;}
+  .rail-card .info{padding:10px 12px;}
+  .rail-card .name{font-family:'Fraunces',serif; font-size:13px; margin-bottom:3px;}
+  .rail-card .price{font-size:12px; font-family:'IBM Plex Mono',monospace; margin:0;}
 
   footer{border-top:1px solid var(--line); padding:30px 20px; text-align:center; font-size:12px; color:var(--khaki-deep);}
 </style>
@@ -80,15 +128,36 @@
 
 <div id="pageArea"><div class="loading">Loading…</div></div>
 
+<div class="section" id="reviewsSection" style="display:none;">
+  <div class="section-title">Customer Reviews</div>
+  <div id="reviewSummaryArea"></div>
+  <div id="writeReviewArea"></div>
+  <div id="reviewListArea"></div>
+</div>
+
+<div class="section" id="relatedSection" style="display:none;">
+  <div class="section-title">You May Also Like</div>
+  <div class="rail" id="relatedRail"></div>
+</div>
+
+<div class="section" id="suggestSection" style="display:none;">
+  <div class="section-title">More To Explore</div>
+  <div class="rail" id="suggestRail"></div>
+</div>
+
 <footer>© 2026 EVERYMN. All rights reserved.</footer>
 
 <script>
-const SUPABASE_URL = 'https://camvsuouhadbeynnpmeo.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_l95Bb9_nA6SURRDwXcf0eg_wFcrxVtz';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentProduct = null;
 let qty = 1;
+let selectedSize = null;
+let selectedColor = null;
+let currentUser = null;
+let selectedRating = 0;
 
 function textureBG(tex, color){
   if(tex==='oxford') return `repeating-linear-gradient(45deg, ${color}, ${color} 3px, ${shade(color,18)} 3px, ${shade(color,18)} 6px)`;
@@ -104,13 +173,22 @@ function shade(hex, percent){
   r=Math.min(255,Math.max(0,r)); g=Math.min(255,Math.max(0,g)); b=Math.min(255,Math.max(0,b));
   return '#'+(0x1000000+r*0x10000+g*0x100+b).toString(16).slice(1);
 }
+// rough color-name to hex guess for swatches; falls back to a neutral grey
+const COLOR_HEX = {
+  black:'#201D1A', navy:'#2C3A4F', olive:'#5C6B4F', white:'#F5F2EC', grey:'#8C8C86', gray:'#8C8C86',
+  rust:'#A24E2E', khaki:'#B8A88A', beige:'#D8CBB0', maroon:'#6E2A2A', blue:'#3A5A78', green:'#4F6B4A'
+};
+function colorHex(name){
+  return COLOR_HEX[name.trim().toLowerCase()] || '#A8A29A';
+}
 
 function getCart(){
   try{ return JSON.parse(localStorage.getItem('em_cart') || '{}'); }catch(e){ return {}; }
 }
+function setCart(cart){ localStorage.setItem('em_cart', JSON.stringify(cart)); }
 function updateCartCountBadge(){
   const cart = getCart();
-  const count = Object.values(cart).reduce((a,b)=>a+b,0);
+  const count = Object.values(cart).reduce((a,b)=>a+(typeof b==='number'?b:b.qty),0);
   const el = document.getElementById('cartCount');
   el.style.display = count>0 ? 'flex' : 'none';
   el.textContent = count;
@@ -124,15 +202,40 @@ function changeQty(delta){
   document.getElementById('qtyNum').textContent = qty;
 }
 
+function selectSize(s){
+  selectedSize = s;
+  document.querySelectorAll('.size-btn').forEach(b=>b.classList.toggle('active', b.dataset.size===s));
+  document.getElementById('sizeWarn')?.classList.remove('show');
+}
+function selectColor(c){
+  selectedColor = c;
+  document.querySelectorAll('.color-btn').forEach(b=>b.classList.toggle('active', b.dataset.color===c));
+}
+
 function addToBag(){
+  if(currentProduct.sizes && !selectedSize){
+    document.getElementById('sizeWarn')?.classList.add('show');
+    return;
+  }
   const cart = getCart();
-  const existing = cart[currentProduct.id] || 0;
-  cart[currentProduct.id] = existing + qty;
-  localStorage.setItem('em_cart', JSON.stringify(cart));
+  const existing = cart[currentProduct.id];
+  const existingQty = existing ? (typeof existing==='number'? existing : existing.qty) : 0;
+  cart[currentProduct.id] = { qty: existingQty + qty, size: selectedSize, color: selectedColor };
+  setCart(cart);
   updateCartCountBadge();
   const note = document.getElementById('addedNote');
   note.classList.add('show');
   setTimeout(()=>note.classList.remove('show'), 2000);
+}
+
+function trackRecentlyViewed(id){
+  try{
+    let recent = JSON.parse(localStorage.getItem('em_recent') || '[]');
+    recent = recent.filter(r=>r!==id);
+    recent.unshift(id);
+    recent = recent.slice(0, 10);
+    localStorage.setItem('em_recent', JSON.stringify(recent));
+  }catch(e){}
 }
 
 async function loadProduct(){
@@ -147,6 +250,7 @@ async function loadProduct(){
     return;
   }
   currentProduct = data;
+  trackRecentlyViewed(data.id);
   document.getElementById('crumbName').textContent = data.name;
   document.title = data.name + ' — EVERYMN';
 
@@ -154,6 +258,9 @@ async function loadProduct(){
   const imageStyle = data.image_url
     ? `background-image:url('${data.image_url}'); background-size:cover; background-position:center;`
     : `background:${textureBG(data.texture, data.color)};`;
+
+  const sizeList = (data.sizes || '').split(',').map(s=>s.trim()).filter(Boolean);
+  const colorList = (data.colors || '').split(',').map(s=>s.trim()).filter(Boolean);
 
   area.innerHTML = `
     <div class="wrap">
@@ -164,13 +271,33 @@ async function loadProduct(){
       <div>
         <div class="cat">${data.category}</div>
         <h1>${data.name}</h1>
+        <div class="rating-line" id="ratingLine"></div>
         <div class="price">₹${data.price}</div>
+
+        ${sizeList.length ? `
+        <div class="option-block">
+          <div class="option-label">Size</div>
+          <div class="size-row">
+            ${sizeList.map(s=>`<button class="size-btn" data-size="${s}" onclick="selectSize('${s}')">${s}</button>`).join('')}
+          </div>
+          <div class="size-warn" id="sizeWarn">Please select a size.</div>
+        </div>` : ''}
+
+        ${colorList.length ? `
+        <div class="option-block">
+          <div class="option-label">Colour</div>
+          <div class="color-row">
+            ${colorList.map(c=>`<button class="color-btn" data-color="${c}" onclick="selectColor('${c}')"><span class="color-dot" style="background:${colorHex(c)};"></span>${c}</button>`).join('')}
+          </div>
+        </div>` : ''}
 
         <div class="spec-table">
           <div class="spec-row"><span class="label">Fabric</span><span class="val">${data.fabric || '—'}</span></div>
           <div class="spec-row"><span class="label">Fit</span><span class="val">${data.fit || '—'}</span></div>
           <div class="spec-row"><span class="label">Care</span><span class="val">${data.care || '—'}</span></div>
         </div>
+
+        ${data.description ? `<div class="description-text">${data.description}</div>` : ''}
 
         ${!outOfStock ? `
         <div class="qty-row">
@@ -185,6 +312,106 @@ async function loadProduct(){
         <div class="added-note" id="addedNote">Added to your bag.</div>
       </div>
     </div>`;
+
+  loadReviews(data.id);
+  loadRelated(data.category, data.id);
+  loadSuggestions(data.id, data.category);
+}
+
+/* ===== REVIEWS ===== */
+async function loadReviews(productId){
+  const { data, error } = await sb.from('reviews').select('*').eq('product_id', productId).order('created_at', {ascending:false});
+  const section = document.getElementById('reviewsSection');
+  section.style.display = 'block';
+  const summaryArea = document.getElementById('reviewSummaryArea');
+  const listArea = document.getElementById('reviewListArea');
+  const writeArea = document.getElementById('writeReviewArea');
+
+  const reviews = (!error && data) ? data : [];
+  const avg = reviews.length ? (reviews.reduce((s,r)=>s+r.rating,0)/reviews.length) : 0;
+
+  summaryArea.innerHTML = reviews.length ? `
+    <div class="review-summary">
+      <div class="big-rating">${avg.toFixed(1)}</div>
+      <div>
+        <div class="stars">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))}</div>
+        <div class="count">${reviews.length} review${reviews.length>1?'s':''}</div>
+      </div>
+    </div>` : `<p style="font-size:13px; color:var(--ink-soft); margin-bottom:20px;">No reviews yet — be the first to share your thoughts.</p>`;
+
+  listArea.innerHTML = reviews.map(r=>`
+    <div class="review-card">
+      <div class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+      <div class="rname">${r.customer_name}</div>
+      <div class="rtext">${r.comment || ''}</div>
+      <div class="rdate">${new Date(r.created_at).toLocaleDateString()}</div>
+    </div>`).join('');
+
+  const { data: { session } } = await sb.auth.getSession();
+  currentUser = session ? session.user : null;
+
+  if(currentUser){
+    writeArea.innerHTML = `
+      <div class="write-review">
+        <div class="option-label">Write a Review</div>
+        <div class="star-picker" id="starPicker">
+          ${[1,2,3,4,5].map(n=>`<span data-n="${n}" onclick="pickStar(${n})">★</span>`).join('')}
+        </div>
+        <textarea id="reviewText" placeholder="Share your experience with this product..."></textarea>
+        <button class="btn-ghost" style="margin-top:10px;" onclick="submitReview('${productId}')">Submit Review</button>
+      </div>`;
+  } else {
+    writeArea.innerHTML = `<p class="login-prompt" style="margin-bottom:20px;">
+      <a href="index.html">Sign in</a> to write a review.</p>`;
+  }
+}
+
+function pickStar(n){
+  selectedRating = n;
+  document.querySelectorAll('#starPicker span').forEach(s=>{
+    s.classList.toggle('active', parseInt(s.dataset.n,10) <= n);
+  });
+}
+
+async function submitReview(productId){
+  if(!selectedRating){ alert('Please pick a star rating.'); return; }
+  const comment = document.getElementById('reviewText').value.trim();
+  const name = currentUser.email.split('@')[0];
+  const { error } = await sb.from('reviews').insert({
+    product_id: productId, user_id: currentUser.id, customer_name: name,
+    rating: selectedRating, comment
+  });
+  if(error){ alert('Could not submit review: '+error.message); return; }
+  selectedRating = 0;
+  loadReviews(productId);
+}
+
+/* ===== RELATED / SUGGESTIONS ===== */
+function renderRail(el, products){
+  el.innerHTML = products.map(p=>`
+    <a class="rail-card" href="product.html?id=${p.id}">
+      <div class="img" style="${p.image_url ? `background-image:url('${p.image_url}'); background-size:cover; background-position:center;` : `background:${textureBG(p.texture,p.color)};`}"></div>
+      <div class="info">
+        <div class="name">${p.name}</div>
+        <div class="price">₹${p.price}</div>
+      </div>
+    </a>`).join('');
+}
+
+async function loadRelated(category, excludeId){
+  const { data, error } = await sb.from('products').select('*').eq('active', true).eq('category', category).neq('id', excludeId).limit(6);
+  if(error || !data || !data.length) return;
+  document.getElementById('relatedSection').style.display = 'block';
+  renderRail(document.getElementById('relatedRail'), data);
+}
+
+async function loadSuggestions(excludeId, excludeCategory){
+  const { data, error } = await sb.from('products').select('*').eq('active', true).neq('id', excludeId).neq('category', excludeCategory).limit(20);
+  if(error || !data || !data.length) return;
+  // shuffle for a "based on browsing" feel
+  const shuffled = data.sort(()=>Math.random()-0.5).slice(0,6);
+  document.getElementById('suggestSection').style.display = 'block';
+  renderRail(document.getElementById('suggestRail'), shuffled);
 }
 
 loadProduct();
