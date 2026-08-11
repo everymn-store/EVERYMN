@@ -91,13 +91,14 @@
     <button class="tab active" id="tabDashboard" onclick="switchTab('dashboard')">Dashboard</button>
     <button class="tab" id="tabOrders" onclick="switchTab('orders')">Orders</button>
     <button class="tab" id="tabStock" onclick="switchTab('stock')">Stock</button>
+    <button class="tab" id="tabVariants" onclick="switchTab('variants')">Size/Colour Stock</button>
   </div>
   <div class="content" id="content"></div>
 </div>
 
 <script>
-const SUPABASE_URL = 'https://camvsuouhadbeynnpmeo.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_l95Bb9_nA6SURRDwXcf0eg_wFcrxVtz';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentTab = 'dashboard';
@@ -135,9 +136,11 @@ function switchTab(tab){
   document.getElementById('tabDashboard').classList.toggle('active', tab==='dashboard');
   document.getElementById('tabOrders').classList.toggle('active', tab==='orders');
   document.getElementById('tabStock').classList.toggle('active', tab==='stock');
+  document.getElementById('tabVariants').classList.toggle('active', tab==='variants');
   if(tab==='dashboard') loadDashboard();
   else if(tab==='orders') loadOrders();
-  else loadStock();
+  else if(tab==='stock') loadStock();
+  else loadVariants();
 }
 
 async function loadDashboard(){
@@ -323,7 +326,8 @@ async function loadStock(){
             <td><input type="checkbox" ${p.active?'checked':''} id="active-${p.id}"></td>
             <td style="white-space:nowrap;">
               <button class="save-stock" onclick="saveProduct('${p.id}')">Save</button>
-              <button class="del-btn" onclick="deleteProduct('${p.id}', '${(p.name||'').replace(/'/g,'')}')">Delete</button>
+              <button class="del-btn" onclick="deleteProduct('${p.id}', '${(p.name||'').replace(/'/g,'')}')">Delete</button><br>
+              <button class="save-stock" style="margin-top:6px; background:var(--khaki-deep);" onclick="openVariants('${p.id}', '${(p.name||'').replace(/'/g,'')}')">Variants</button>
             </td>
           </tr>`).join('')}
       </tbody>
@@ -392,6 +396,154 @@ async function saveProduct(id){
     active
   }).eq('id', id);
   if(error){ alert('Failed to save: '+error.message); } else { alert('Saved.'); }
+}
+
+/* ===================== VARIANTS ===================== */
+async function openVariants(productId, productName){
+  const content = document.getElementById('content');
+  content.innerHTML = '<p>Loading variants…</p>';
+  const { data, error } = await sb.from('product_variants').select('*').eq('product_id', productId).order('size');
+  if(error){ content.innerHTML = '<p style="color:var(--rust)">Error: '+error.message+'</p>'; return; }
+
+  content.innerHTML = `
+    <button class="btn-ghost" style="margin-bottom:16px; padding:8px 16px; font-size:13px; border:1px solid var(--line); border-radius:3px;" onclick="loadStock()">← Back to Stock</button>
+    <h3 class="serif" style="font-size:18px; margin-bottom:6px;">${productName} — Variants</h3>
+    <p style="font-size:12px; color:var(--khaki-deep); margin-bottom:16px;">Each row is a specific size/colour combo with its own stock count. Leave Size or Colour blank if this product doesn't use that option.</p>
+
+    <div class="add-form open" style="margin-bottom:20px;">
+      <div class="form-row">
+        <input type="text" id="var-size" placeholder="Size (e.g. M) — optional">
+        <input type="text" id="var-color" placeholder="Colour (e.g. Black) — optional">
+      </div>
+      <div class="form-row">
+        <input type="number" id="var-stock" placeholder="Stock quantity">
+        <button class="form-submit" onclick="addVariant('${productId}', '${productName}')">Add Variant</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Size</th><th>Colour</th><th>Stock</th><th></th></tr></thead>
+      <tbody id="variantRows">
+        ${data.map(v=>`
+          <tr>
+            <td>${v.size || '—'}</td>
+            <td>${v.color || '—'}</td>
+            <td><input type="number" class="stock-input" id="vstock-${v.id}" value="${v.stock}"></td>
+            <td>
+              <button class="save-stock" onclick="saveVariant('${v.id}', '${productId}', '${productName}')">Save</button>
+              <button class="del-btn" onclick="deleteVariant('${v.id}', '${productId}', '${productName}')">Delete</button>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    ${!data.length ? '<p style="font-size:13px; color:var(--ink-soft); margin-top:14px;">No variants yet — add one above.</p>' : ''}
+  `;
+}
+
+async function addVariant(productId, productName){
+  const size = document.getElementById('var-size').value.trim() || null;
+  const color = document.getElementById('var-color').value.trim() || null;
+  const stock = parseInt(document.getElementById('var-stock').value, 10) || 0;
+  const { error } = await sb.from('product_variants').insert({ product_id: productId, size, color, stock });
+  if(error){ alert('Failed to add variant: '+error.message); return; }
+  openVariants(productId, productName);
+}
+
+async function saveVariant(variantId, productId, productName){
+  const stock = parseInt(document.getElementById('vstock-'+variantId).value, 10);
+  const { error } = await sb.from('product_variants').update({ stock }).eq('id', variantId);
+  if(error){ alert('Failed to save: '+error.message); return; }
+  alert('Saved.');
+}
+
+async function deleteVariant(variantId, productId, productName){
+  if(!confirm('Delete this variant?')) return;
+  const { error } = await sb.from('product_variants').delete().eq('id', variantId);
+  if(error){ alert('Failed to delete: '+error.message); return; }
+  openVariants(productId, productName);
+}
+
+/* ===================== SIZE/COLOUR VARIANT STOCK ===================== */
+let selectedVariantProductId = null;
+
+async function loadVariants(){
+  const content = document.getElementById('content');
+  const { data: products, error } = await sb.from('products').select('*').order('name');
+  if(error){ content.innerHTML = '<p style="color:var(--rust)">Error: '+error.message+'</p>'; return; }
+  allProducts = products;
+
+  content.innerHTML = `
+    <p style="font-size:13px; color:var(--ink-soft); margin-bottom:14px;">
+      Pick a product, then set exact stock for each size/colour combination. Leave this empty for a product to keep using its single overall stock number instead.
+    </p>
+    <select id="variantProductSelect" onchange="selectVariantProduct(this.value)" style="width:100%; margin-bottom:20px;">
+      <option value="">Select a product…</option>
+      ${products.map(p=>`<option value="${p.id}">${p.name}${p.sizes||p.colors ? '' : ' (no sizes/colours set — add them in Stock tab first)'}</option>`).join('')}
+    </select>
+    <div id="variantEditorArea"></div>
+  `;
+}
+
+async function selectVariantProduct(id){
+  selectedVariantProductId = id;
+  const area = document.getElementById('variantEditorArea');
+  if(!id){ area.innerHTML = ''; return; }
+  const product = allProducts.find(p=>p.id===id);
+  const sizes = (product.sizes||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const colors = (product.colors||'').split(',').map(s=>s.trim()).filter(Boolean);
+
+  if(!sizes.length && !colors.length){
+    area.innerHTML = `<p style="font-size:13px; color:var(--rust);">This product has no Sizes or Colours set yet. Go to the Stock tab and add them first (e.g. "S,M,L,XL"), then come back here.</p>`;
+    return;
+  }
+
+  const { data: variants, error } = await sb.from('product_variants').select('*').eq('product_id', id);
+  if(error){ area.innerHTML = '<p style="color:var(--rust)">Error: '+error.message+'</p>'; return; }
+
+  // Build every combination of size × colour (or just size, or just colour)
+  const combos = [];
+  if(sizes.length && colors.length){
+    sizes.forEach(s=>colors.forEach(c=>combos.push({size:s, color:c})));
+  } else if(sizes.length){
+    sizes.forEach(s=>combos.push({size:s, color:null}));
+  } else {
+    colors.forEach(c=>combos.push({size:null, color:c}));
+  }
+
+  area.innerHTML = `
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Size</th><th>Colour</th><th>Stock</th><th></th></tr></thead>
+      <tbody id="variantRows">
+        ${combos.map(combo=>{
+          const existing = variants.find(v=>(v.size||null)===combo.size && (v.color||null)===combo.color);
+          const rowId = (combo.size||'none')+'__'+(combo.color||'none');
+          return `<tr>
+            <td>${combo.size || '—'}</td>
+            <td>${combo.color || '—'}</td>
+            <td><input type="number" class="stock-input" id="vstock-${rowId}" value="${existing ? existing.stock : 0}"></td>
+            <td><button class="save-stock" onclick="saveVariant('${id}','${combo.size||''}','${combo.color||''}','${existing ? existing.id : ''}')">Save</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+
+async function saveVariant(productId, size, color, existingId){
+  const rowId = (size||'none')+'__'+(color||'none');
+  const stock = parseInt(document.getElementById('vstock-'+rowId).value, 10) || 0;
+  if(existingId){
+    const { error } = await sb.from('product_variants').update({ stock }).eq('id', existingId);
+    if(error){ alert('Failed to save: '+error.message); } else { alert('Saved.'); }
+  } else {
+    const { error } = await sb.from('product_variants').insert({
+      product_id: productId, size: size || null, color: color || null, stock
+    });
+    if(error){ alert('Failed to save: '+error.message); } else { alert('Saved.'); selectVariantProduct(productId); }
+  }
 }
 
 checkSession();
