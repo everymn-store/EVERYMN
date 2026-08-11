@@ -382,8 +382,8 @@
    CONFIG — fill these in after creating your Supabase & Razorpay accounts
    (see SETUP.md for exact steps)
    ============================================================ */
-const SUPABASE_URL = 'https://camvsuouhadbeynnpmeo.supabase.co';        // e.g. https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = 'sb_publishable_l95Bb9_nA6SURRDwXcf0eg_wFcrxVtz';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';        // e.g. https://xxxx.supabase.co
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const RAZORPAY_KEY_ID = 'YOUR_RAZORPAY_KEY_ID';  // e.g. rzp_test_xxxxxxxx
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -436,7 +436,7 @@ async function loadNewArrivals(){
         <div class="name">${p.name}</div>
         <div class="price-row">
           <span class="price">₹${p.price}</span>
-          <button class="add-btn" onclick="addToCart('${p.id}', event)">+</button>
+          <button class="add-btn" onclick="${(p.sizes||p.colors) ? `location.href='product.html?id=${p.id}'` : `addToCart('${p.id}', event)`}">${(p.sizes||p.colors) ? '→' : '+'}</button>
         </div>
       </div>
     </div>`).join('')}</div>`;
@@ -636,7 +636,7 @@ function renderCheckout(){
 function genOrderNumber(){ return 'EM' + Math.floor(100000+Math.random()*899999); }
 
 async function saveOrder({orderNumber, name, phone, pin, addr, subtotal, shipping, total, paymentMethod, paymentStatus, razorpayId}){
-  const items = Object.values(cart).map(i=>({ id:i.product.id, name:i.product.name, price:i.product.price, qty:i.qty, size:i.size||null, color:i.color||null }));
+  const items = Object.values(cart).map(i=>({ id:i.product.id, name:i.product.name, price:i.product.price, qty:i.qty, size:i.size||null, color:i.color||null, variantId:i.variantId||null }));
   const { error } = await sb.from('orders').insert({
     order_number: orderNumber, customer_name: name, phone, pincode: pin, address: addr,
     items, subtotal, shipping, total,
@@ -644,9 +644,13 @@ async function saveOrder({orderNumber, name, phone, pin, addr, subtotal, shippin
     user_id: currentUser ? currentUser.id : null
   });
   if(error){ alert('Order failed to save: '+error.message); return false; }
-  // reduce stock for each item via a secure function (customers can't edit products directly)
+  // reduce stock for each item via secure functions (customers can't edit products/variants directly)
   for(const item of Object.values(cart)){
-    await sb.rpc('decrement_stock', { p_id: item.product.id, qty: item.qty });
+    if(item.variantId){
+      await sb.rpc('decrement_variant_stock', { v_id: item.variantId, qty: item.qty });
+    } else {
+      await sb.rpc('decrement_stock', { p_id: item.product.id, qty: item.qty });
+    }
   }
   return true;
 }
@@ -807,7 +811,7 @@ async function initAuth(){
 
 function saveCartToStorage(){
   const simple = {};
-  Object.entries(cart).forEach(([id,item])=>{ simple[id] = { qty: item.qty, size: item.size||null, color: item.color||null }; });
+  Object.entries(cart).forEach(([id,item])=>{ simple[id] = { qty: item.qty, size: item.size||null, color: item.color||null, variantId: item.variantId||null }; });
   localStorage.setItem('em_cart', JSON.stringify(simple));
 }
 function restoreCartFromStorage(){
@@ -820,7 +824,8 @@ function restoreCartFromStorage(){
       const qty = typeof entry === 'number' ? entry : entry.qty;
       const size = typeof entry === 'object' ? entry.size : null;
       const color = typeof entry === 'object' ? entry.color : null;
-      if(qty > 0) cart[id] = { qty, size, color, product: p };
+      const variantId = typeof entry === 'object' ? entry.variantId : null;
+      if(qty > 0) cart[id] = { qty, size, color, variantId, product: p };
     });
   }catch(e){}
 }
