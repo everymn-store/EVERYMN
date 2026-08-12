@@ -97,8 +97,8 @@
 </div>
 
 <script>
-const SUPABASE_URL = 'https://camvsuouhadbeynnpmeo.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_l95Bb9_nA6SURRDwXcf0eg_wFcrxVtz';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentTab = 'dashboard';
@@ -270,19 +270,43 @@ async function updateStatus(id, status){
   if(o) o.order_status = status;
 }
 
+let allCategories = [];
+
 async function loadStock(){
   const content = document.getElementById('content');
   content.innerHTML = '<p>Loading products…</p>';
-  const { data, error } = await sb.from('products').select('*').order('name');
+  const [{ data, error }, { data: cats, error: catErr }] = await Promise.all([
+    sb.from('products').select('*').order('name'),
+    sb.from('categories').select('*').order('name')
+  ]);
   if(error){ content.innerHTML = '<p style="color:var(--rust)">Error: '+error.message+'</p>'; return; }
   allProducts = data;
+  allCategories = catErr ? [] : cats;
 
   content.innerHTML = `
+    <div class="add-form open" style="margin-bottom:20px;">
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--khaki-deep); margin-bottom:8px;">Categories</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+        ${allCategories.map(c=>`
+          <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--line); border-radius:16px; font-size:13px; background:var(--white);">
+            ${c.name}
+            <button onclick="removeCategory('${c.id}','${c.name.replace(/'/g,"")}')" style="font-size:14px; line-height:1; color:var(--rust);">✕</button>
+          </span>`).join('') || '<span style="font-size:12px; color:var(--khaki-deep);">None yet — add one below</span>'}
+      </div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="new-category-name" placeholder="Add a category (e.g. Shirts)" style="flex:1;">
+        <button class="save-stock" onclick="addCategory()">Add</button>
+      </div>
+    </div>
+
     <button class="add-btn-toggle" onclick="toggleAddForm()">+ Add New Product</button>
     <div class="add-form" id="addForm">
       <div class="form-row">
         <input type="text" id="new-name" placeholder="Product name">
-        <input type="text" id="new-category" placeholder="Category (e.g. Shirts)">
+        <select id="new-category">
+          <option value="">Select category…</option>
+          ${allCategories.map(c=>`<option value="${c.name}">${c.name}</option>`).join('')}
+        </select>
       </div>
       <div class="form-row">
         <input type="number" id="new-price" placeholder="Price (Rs)">
@@ -317,7 +341,11 @@ async function loadStock(){
         ${data.map(p=>`
           <tr class="${p.stock<=3 ? 'low-row' : ''}">
             <td>${p.name}${p.stock<=3 ? ' <span class="badge low">low</span>' : ''}</td>
-            <td>${p.category}</td>
+            <td>
+              <select id="cat-${p.id}" style="font-size:12px; padding:6px 8px;">
+                ${allCategories.map(c=>`<option value="${c.name}" ${c.name===p.category?'selected':''}>${c.name}</option>`).join('')}
+              </select>
+            </td>
             <td><input type="number" class="stock-input" id="price-${p.id}" value="${p.price}" style="width:90px;"></td>
             <td><textarea id="image-${p.id}" placeholder="Photo URL(s), comma-separated" style="width:180px; font-size:11px; min-height:40px;">${(p.gallery && p.gallery.length ? [p.image_url].concat(p.gallery).filter(Boolean).join(', ') : (p.image_url||''))}</textarea></td>
             <td><input type="text" id="sizes-${p.id}" value="${p.sizes||''}" placeholder="S,M,L" style="width:100px; font-size:12px;"></td>
@@ -327,12 +355,36 @@ async function loadStock(){
             <td style="white-space:nowrap;">
               <button class="save-stock" onclick="saveProduct('${p.id}')">Save</button>
               <button class="del-btn" onclick="deleteProduct('${p.id}', '${(p.name||'').replace(/'/g,'')}')">Delete</button><br>
-              <button class="save-stock" style="margin-top:6px; background:var(--khaki-deep);" onclick="openVariants('${p.id}', '${(p.name||'').replace(/'/g,'')}')">Variants</button>
+              <button class="save-stock" style="margin-top:6px; background:var(--khaki-deep);" onclick="goToProductVariants('${p.id}')">Variants</button>
             </td>
           </tr>`).join('')}
       </tbody>
     </table>
     </div>`;
+}
+
+async function addCategory(){
+  const input = document.getElementById('new-category-name');
+  const name = input.value.trim();
+  if(!name) return;
+  const { error } = await sb.from('categories').insert({ name });
+  if(error){ alert('Failed to add category: '+error.message); return; }
+  loadStock();
+}
+
+async function removeCategory(id, name){
+  if(!confirm(`Remove category "${name}"? Products already using it will keep the name until you reassign them.`)) return;
+  const { error } = await sb.from('categories').delete().eq('id', id);
+  if(error){ alert('Failed to remove: '+error.message); return; }
+  loadStock();
+}
+
+function goToProductVariants(productId){
+  switchTab('variants');
+  setTimeout(()=>{
+    const select = document.getElementById('variantProductSelect');
+    if(select){ select.value = productId; selectVariantProduct(productId); }
+  }, 50);
 }
 
 function toggleAddForm(){
@@ -383,86 +435,20 @@ async function deleteProduct(id, name){
 async function saveProduct(id){
   const stock = parseInt(document.getElementById('stock-'+id).value, 10);
   const price = parseInt(document.getElementById('price-'+id).value, 10);
+  const category = document.getElementById('cat-'+id).value;
   const sizes = document.getElementById('sizes-'+id).value.trim();
   const colors = document.getElementById('colors-'+id).value.trim();
   const imagesRaw = document.getElementById('image-'+id).value.trim();
   const images = imagesRaw ? imagesRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
   const active = document.getElementById('active-'+id).checked;
   const { error } = await sb.from('products').update({
-    stock, price,
+    stock, price, category,
     sizes: sizes || null, colors: colors || null,
     image_url: images[0] || null,
     gallery: images.length > 1 ? images.slice(1) : [],
     active
   }).eq('id', id);
   if(error){ alert('Failed to save: '+error.message); } else { alert('Saved.'); }
-}
-
-/* ===================== VARIANTS ===================== */
-async function openVariants(productId, productName){
-  const content = document.getElementById('content');
-  content.innerHTML = '<p>Loading variants…</p>';
-  const { data, error } = await sb.from('product_variants').select('*').eq('product_id', productId).order('size');
-  if(error){ content.innerHTML = '<p style="color:var(--rust)">Error: '+error.message+'</p>'; return; }
-
-  content.innerHTML = `
-    <button class="btn-ghost" style="margin-bottom:16px; padding:8px 16px; font-size:13px; border:1px solid var(--line); border-radius:3px;" onclick="loadStock()">← Back to Stock</button>
-    <h3 class="serif" style="font-size:18px; margin-bottom:6px;">${productName} — Variants</h3>
-    <p style="font-size:12px; color:var(--khaki-deep); margin-bottom:16px;">Each row is a specific size/colour combo with its own stock count. Leave Size or Colour blank if this product doesn't use that option.</p>
-
-    <div class="add-form open" style="margin-bottom:20px;">
-      <div class="form-row">
-        <input type="text" id="var-size" placeholder="Size (e.g. M) — optional">
-        <input type="text" id="var-color" placeholder="Colour (e.g. Black) — optional">
-      </div>
-      <div class="form-row">
-        <input type="number" id="var-stock" placeholder="Stock quantity">
-        <button class="form-submit" onclick="addVariant('${productId}', '${productName}')">Add Variant</button>
-      </div>
-    </div>
-
-    <div class="table-wrap">
-    <table>
-      <thead><tr><th>Size</th><th>Colour</th><th>Stock</th><th></th></tr></thead>
-      <tbody id="variantRows">
-        ${data.map(v=>`
-          <tr>
-            <td>${v.size || '—'}</td>
-            <td>${v.color || '—'}</td>
-            <td><input type="number" class="stock-input" id="vstock-${v.id}" value="${v.stock}"></td>
-            <td>
-              <button class="save-stock" onclick="saveVariant('${v.id}', '${productId}', '${productName}')">Save</button>
-              <button class="del-btn" onclick="deleteVariant('${v.id}', '${productId}', '${productName}')">Delete</button>
-            </td>
-          </tr>`).join('')}
-      </tbody>
-    </table>
-    </div>
-    ${!data.length ? '<p style="font-size:13px; color:var(--ink-soft); margin-top:14px;">No variants yet — add one above.</p>' : ''}
-  `;
-}
-
-async function addVariant(productId, productName){
-  const size = document.getElementById('var-size').value.trim() || null;
-  const color = document.getElementById('var-color').value.trim() || null;
-  const stock = parseInt(document.getElementById('var-stock').value, 10) || 0;
-  const { error } = await sb.from('product_variants').insert({ product_id: productId, size, color, stock });
-  if(error){ alert('Failed to add variant: '+error.message); return; }
-  openVariants(productId, productName);
-}
-
-async function saveVariant(variantId, productId, productName){
-  const stock = parseInt(document.getElementById('vstock-'+variantId).value, 10);
-  const { error } = await sb.from('product_variants').update({ stock }).eq('id', variantId);
-  if(error){ alert('Failed to save: '+error.message); return; }
-  alert('Saved.');
-}
-
-async function deleteVariant(variantId, productId, productName){
-  if(!confirm('Delete this variant?')) return;
-  const { error } = await sb.from('product_variants').delete().eq('id', variantId);
-  if(error){ alert('Failed to delete: '+error.message); return; }
-  openVariants(productId, productName);
 }
 
 /* ===================== SIZE/COLOUR VARIANT STOCK ===================== */
@@ -476,14 +462,59 @@ async function loadVariants(){
 
   content.innerHTML = `
     <p style="font-size:13px; color:var(--ink-soft); margin-bottom:14px;">
-      Pick a product, then set exact stock for each size/colour combination. Leave this empty for a product to keep using its single overall stock number instead.
+      Pick a product. Add or remove sizes/colours here, then set exact stock for each combination.
     </p>
     <select id="variantProductSelect" onchange="selectVariantProduct(this.value)" style="width:100%; margin-bottom:20px;">
       <option value="">Select a product…</option>
-      ${products.map(p=>`<option value="${p.id}">${p.name}${p.sizes||p.colors ? '' : ' (no sizes/colours set — add them in Stock tab first)'}</option>`).join('')}
+      ${products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
     </select>
     <div id="variantEditorArea"></div>
   `;
+}
+
+function chipRow(label, values, kind, productId){
+  return `
+    <div class="option-block" style="margin-bottom:16px;">
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--khaki-deep); margin-bottom:8px;">${label}</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+        ${values.map(v=>`
+          <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--line); border-radius:16px; font-size:13px; background:var(--white);">
+            ${v}
+            <button onclick="removeOption('${productId}','${kind}','${v.replace(/'/g,"")}')" style="font-size:14px; line-height:1; color:var(--rust);">✕</button>
+          </span>`).join('') || '<span style="font-size:12px; color:var(--khaki-deep);">None yet</span>'}
+      </div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="new-${kind}-input" placeholder="Add ${label.toLowerCase().slice(0,-1)} (e.g. ${kind==='size'?'M':'Black'})" style="flex:1;">
+        <button class="save-stock" onclick="addOption('${productId}','${kind}')">Add</button>
+      </div>
+    </div>`;
+}
+
+async function addOption(productId, kind){
+  const input = document.getElementById('new-'+kind+'-input');
+  const val = input.value.trim();
+  if(!val) return;
+  const product = allProducts.find(p=>p.id===productId);
+  const current = (product[kind+'s']||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(current.includes(val)){ input.value=''; return; }
+  current.push(val);
+  const field = kind+'s'; // 'sizes' or 'colors'
+  const { error } = await sb.from('products').update({ [field]: current.join(',') }).eq('id', productId);
+  if(error){ alert('Failed to add: '+error.message); return; }
+  product[field] = current.join(',');
+  selectVariantProduct(productId);
+}
+
+async function removeOption(productId, kind, val){
+  if(!confirm(`Remove "${val}" from ${kind}s? This also deletes stock entries using it.`)) return;
+  const product = allProducts.find(p=>p.id===productId);
+  const field = kind+'s';
+  const current = (product[field]||'').split(',').map(s=>s.trim()).filter(Boolean).filter(v=>v!==val);
+  const { error } = await sb.from('products').update({ [field]: current.join(',') }).eq('id', productId);
+  if(error){ alert('Failed to remove: '+error.message); return; }
+  await sb.from('product_variants').delete().eq('product_id', productId).eq(kind, val);
+  product[field] = current.join(',');
+  selectVariantProduct(productId);
 }
 
 async function selectVariantProduct(id){
@@ -494,42 +525,42 @@ async function selectVariantProduct(id){
   const sizes = (product.sizes||'').split(',').map(s=>s.trim()).filter(Boolean);
   const colors = (product.colors||'').split(',').map(s=>s.trim()).filter(Boolean);
 
-  if(!sizes.length && !colors.length){
-    area.innerHTML = `<p style="font-size:13px; color:var(--rust);">This product has no Sizes or Colours set yet. Go to the Stock tab and add them first (e.g. "S,M,L,XL"), then come back here.</p>`;
-    return;
-  }
-
   const { data: variants, error } = await sb.from('product_variants').select('*').eq('product_id', id);
   if(error){ area.innerHTML = '<p style="color:var(--rust)">Error: '+error.message+'</p>'; return; }
 
-  // Build every combination of size × colour (or just size, or just colour)
-  const combos = [];
-  if(sizes.length && colors.length){
-    sizes.forEach(s=>colors.forEach(c=>combos.push({size:s, color:c})));
-  } else if(sizes.length){
-    sizes.forEach(s=>combos.push({size:s, color:null}));
+  let tableHtml = '';
+  if(sizes.length || colors.length){
+    const combos = [];
+    if(sizes.length && colors.length){
+      sizes.forEach(s=>colors.forEach(c=>combos.push({size:s, color:c})));
+    } else if(sizes.length){
+      sizes.forEach(s=>combos.push({size:s, color:null}));
+    } else {
+      colors.forEach(c=>combos.push({size:null, color:c}));
+    }
+    tableHtml = `
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Size</th><th>Colour</th><th>Stock</th><th></th></tr></thead>
+        <tbody>
+          ${combos.map(combo=>{
+            const existing = variants.find(v=>(v.size||null)===combo.size && (v.color||null)===combo.color);
+            const rowId = (combo.size||'none')+'__'+(combo.color||'none');
+            return `<tr>
+              <td>${combo.size || '—'}</td>
+              <td>${combo.color || '—'}</td>
+              <td><input type="number" class="stock-input" id="vstock-${rowId}" value="${existing ? existing.stock : 0}"></td>
+              <td><button class="save-stock" onclick="saveVariant('${id}','${combo.size||''}','${combo.color||''}','${existing ? existing.id : ''}')">Save</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>`;
   } else {
-    colors.forEach(c=>combos.push({size:null, color:c}));
+    tableHtml = '<p style="font-size:13px; color:var(--ink-soft);">Add at least one size or colour above to start setting stock.</p>';
   }
 
-  area.innerHTML = `
-    <div class="table-wrap">
-    <table>
-      <thead><tr><th>Size</th><th>Colour</th><th>Stock</th><th></th></tr></thead>
-      <tbody id="variantRows">
-        ${combos.map(combo=>{
-          const existing = variants.find(v=>(v.size||null)===combo.size && (v.color||null)===combo.color);
-          const rowId = (combo.size||'none')+'__'+(combo.color||'none');
-          return `<tr>
-            <td>${combo.size || '—'}</td>
-            <td>${combo.color || '—'}</td>
-            <td><input type="number" class="stock-input" id="vstock-${rowId}" value="${existing ? existing.stock : 0}"></td>
-            <td><button class="save-stock" onclick="saveVariant('${id}','${combo.size||''}','${combo.color||''}','${existing ? existing.id : ''}')">Save</button></td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-    </div>`;
+  area.innerHTML = chipRow('Sizes', sizes, 'size', id) + chipRow('Colours', colors, 'color', id) + tableHtml;
 }
 
 async function saveVariant(productId, size, color, existingId){
