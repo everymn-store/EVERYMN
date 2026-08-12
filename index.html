@@ -87,6 +87,12 @@
   .st1{top:0; left:8%; transform:rotate(-6deg); z-index:2;}
   .st2{top:50px; left:36%; transform:rotate(4deg); z-index:3;}
 
+  .search-filter-bar{max-width:1240px; margin:0 auto; padding:0 20px 16px; display:flex; gap:12px; flex-wrap:wrap;}
+  .search-box{flex:1; min-width:200px; display:flex; align-items:center; gap:8px; background:var(--white); border:1px solid var(--line); border-radius:24px; padding:10px 16px;}
+  .search-box .search-icon{font-size:14px; opacity:.6;}
+  .search-box input{flex:1; border:none; outline:none; background:transparent; font-size:14px; font-family:'Inter',sans-serif;}
+  #sortSelect{border:1px solid var(--line); border-radius:24px; padding:10px 16px; font-size:13px; background:var(--white); color:var(--ink-soft);}
+
   .cat-strip{max-width:1240px; margin:0 auto; padding:0 20px 10px; display:flex; gap:10px; overflow-x:auto; scrollbar-width:none;}
   .cat-strip::-webkit-scrollbar{display:none;}
   .chip{flex:0 0 auto; padding:9px 18px; border:1px solid var(--line); border-radius:20px; font-size:13px; font-weight:500; white-space:nowrap; transition:.2s; background:var(--white);}
@@ -100,15 +106,21 @@
   @media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr); gap:20px;}}
   @media(min-width:1000px){.grid{grid-template-columns:repeat(4,1fr);}}
 
-  .card{position:relative; border-radius:4px; overflow:hidden; cursor:pointer; background:var(--white); border:1px solid var(--line); perspective:1200px;}
+  @keyframes cardIn{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
+  .card{position:relative; border-radius:4px; overflow:hidden; cursor:pointer; background:var(--white); border:1px solid var(--line); perspective:1200px; transition:transform .25s ease, box-shadow .25s ease; animation:cardIn .5s ease backwards;}
+  .card:hover{transform:translateY(-4px); box-shadow:0 14px 28px -14px rgba(32,29,26,.25);}
   .card-face{position:relative; height:180px; transition:transform .5s cubic-bezier(.4,.2,.2,1); transform-style:preserve-3d;}
   @media(min-width:640px){.card-face{height:230px;}}
   .card.flipped .card-face{transform:rotateY(180deg);}
-  .swatch-front, .swatch-back{position:absolute; inset:0; backface-visibility:hidden;}
+  .swatch-front, .swatch-back{position:absolute; inset:0; backface-visibility:hidden; transition:transform .3s ease;}
+  .card:hover .swatch-front{transform:scale(1.04);}
   .swatch-back{transform:rotateY(180deg); background:var(--paper); color:var(--ink); padding:14px; display:flex; flex-direction:column; justify-content:center; gap:6px;}
   .swatch-back .mono{font-size:11px; line-height:1.7; color:var(--ink-soft);}
   .swatch-back .tag-title{font-family:'Fraunces',serif; font-size:14px; margin-bottom:4px;}
   .flip-hint{position:absolute; top:8px; right:8px; width:26px; height:26px; border-radius:50%; background:rgba(250,247,241,.9); display:flex; align-items:center; justify-content:center; font-size:13px; z-index:5; border:1px solid var(--line);}
+  .wish-btn{position:absolute; top:8px; right:8px; width:30px; height:30px; border-radius:50%; background:rgba(250,247,241,.92); display:flex; align-items:center; justify-content:center; font-size:15px; z-index:6; border:1px solid var(--line); transition:transform .15s ease;}
+  .wish-btn:active{transform:scale(1.2);}
+  .wish-btn.active{color:var(--rust);}
   .stock-badge{position:absolute; top:8px; left:8px; z-index:5; font-size:10px; font-family:'IBM Plex Mono',monospace; padding:3px 8px; border-radius:10px; background:rgba(32,29,26,.85); color:#fff;}
   .stock-badge.low{background:var(--rust);}
   .card-info{padding:12px 14px 16px;}
@@ -116,10 +128,11 @@
   .card-info .name{font-family:'Fraunces',serif; font-size:16px; margin-bottom:6px;}
   .card-info .price-row{display:flex; align-items:center; justify-content:space-between;}
   .price{font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:500;}
-  .add-btn{width:30px; height:30px; border-radius:50%; border:1px solid var(--ink); display:flex; align-items:center; justify-content:center; font-size:16px; transition:.2s;}
+  .add-btn{width:30px; height:30px; border-radius:50%; border:1px solid var(--ink); display:flex; align-items:center; justify-content:center; font-size:16px; transition:transform .15s ease, background .2s ease;}
   .add-btn:hover{background:var(--ink); color:var(--bone);}
-  .add-btn.added{background:var(--moss); border-color:var(--moss); color:#fff;}
+  .add-btn.added{background:var(--moss); border-color:var(--moss); color:#fff; transform:scale(1.15);}
   .add-btn:disabled{opacity:.35; cursor:not-allowed;}
+  .empty-results{grid-column:1/-1; text-align:center; padding:50px 20px; color:var(--ink-soft);}
 
   .loading, .error-msg{padding:60px 20px; text-align:center; color:var(--ink-soft);}
   .error-msg{color:var(--rust);}
@@ -178,7 +191,11 @@
   .success-screen h2{font-family:'Fraunces',serif; font-size:26px; margin-bottom:10px;}
   .success-screen p{color:var(--ink-soft); font-size:14px; margin-bottom:26px;}
 
-  @media(prefers-reduced-motion: reduce){*{transition:none !important;}}
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+  .hero{animation:fadeUp .6s ease;}
+  .hero-visual{animation:fadeUp .8s ease .1s backwards;}
+  a, button{transition:opacity .15s ease;}
+  @media(prefers-reduced-motion: reduce){*{transition:none !important; animation:none !important;}}
   :focus-visible{outline:2px solid var(--rust); outline-offset:2px;}
 </style>
 </head>
@@ -196,6 +213,9 @@
     </nav>
     <div class="nav-right">
       <button class="icon-btn" onclick="openAccount()" aria-label="Account">👤</button>
+      <button class="icon-btn" onclick="openWishlist()" aria-label="Wishlist">
+        ♡<span class="cart-count" id="wishCount" style="display:none;">0</span>
+      </button>
       <button class="icon-btn" onclick="openCart()" aria-label="Open cart">
         🛍<span class="cart-count" id="cartCount" style="display:none;">0</span>
       </button>
@@ -251,6 +271,19 @@
   </div>
   <div id="newArrivalsArea"><div class="loading">Loading…</div></div>
 </section>
+
+<div class="search-filter-bar">
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search products…" oninput="applyFilters()">
+  </div>
+  <select id="sortSelect" onchange="applyFilters()">
+    <option value="default">Sort: Featured</option>
+    <option value="price-low">Price: Low to High</option>
+    <option value="price-high">Price: High to Low</option>
+    <option value="name">Name: A–Z</option>
+  </select>
+</div>
 
 <div class="cat-strip" id="catStrip"></div>
 
@@ -377,13 +410,21 @@
   <div class="checkout-body" id="accountContent"></div>
 </div>
 
+<div class="checkout-view" id="wishlistView">
+  <div class="checkout-head">
+    <button class="back-btn" onclick="closeWishlist()">←</button>
+    <h2>Wishlist</h2>
+  </div>
+  <div class="checkout-body" id="wishlistContent"></div>
+</div>
+
 <script>
 /* ============================================================
    CONFIG — fill these in after creating your Supabase & Razorpay accounts
    (see SETUP.md for exact steps)
    ============================================================ */
-const SUPABASE_URL = 'https://camvsuouhadbeynnpmeo.supabase.co';        // e.g. https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = 'sb_publishable_l95Bb9_nA6SURRDwXcf0eg_wFcrxVtz';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';        // e.g. https://xxxx.supabase.co
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const RAZORPAY_KEY_ID = 'YOUR_RAZORPAY_KEY_ID';  // e.g. rzp_test_xxxxxxxx
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -426,8 +467,12 @@ async function loadNewArrivals(){
     return;
   }
   data.forEach(p=>productById[p.id]=p);
-  area.innerHTML = `<div class="grid">${data.map(p=>`
+  const wishlist = getWishlist();
+  area.innerHTML = `<div class="grid">${data.map(p=>{
+    const isWished = wishlist.includes(p.id);
+    return `
     <div class="card" onclick="location.href='product.html?id=${p.id}'">
+      <button class="wish-btn ${isWished?'active':''}" id="wish-${p.id}" onclick="toggleWishlist('${p.id}', event)">${isWished ? '♥' : '♡'}</button>
       <div class="card-face">
         <div class="swatch-front" style="${p.image_url ? `background-image:url('${p.image_url}'); background-size:cover; background-position:center;` : `background:${textureBG(p.texture,p.color)};`}"></div>
       </div>
@@ -439,7 +484,8 @@ async function loadNewArrivals(){
           <button class="add-btn" onclick="${(p.sizes||p.colors) ? `location.href='product.html?id=${p.id}'` : `addToCart('${p.id}', event)`}">${(p.sizes||p.colors) ? '→' : '+'}</button>
         </div>
       </div>
-    </div>`).join('')}</div>`;
+    </div>`;
+  }).join('')}</div>`;
 }
 
 /* ===== LOAD PRODUCTS FROM SUPABASE ===== */
@@ -454,7 +500,7 @@ async function loadProducts(){
   data.forEach(p=>productById[p.id]=p);
   area.innerHTML = `<div class="grid" id="productGrid"></div>`;
   renderCatStrip();
-  renderGrid();
+  applyFilters();
 }
 
 function renderCatStrip(){
@@ -464,21 +510,47 @@ function renderCatStrip(){
 function filterCat(cat){
   currentCat = cat;
   renderCatStrip();
-  renderGrid();
+  applyFilters();
   document.getElementById('shop').scrollIntoView({behavior:'smooth'});
 }
 
-function renderGrid(){
+function applyFilters(){
+  const search = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+  const sort = document.getElementById('sortSelect')?.value || 'default';
+
+  let list = currentCat==='All' ? [...PRODUCTS] : PRODUCTS.filter(p=>p.category===currentCat);
+  if(search){
+    list = list.filter(p=>
+      p.name.toLowerCase().includes(search) ||
+      p.category.toLowerCase().includes(search) ||
+      (p.fabric||'').toLowerCase().includes(search)
+    );
+  }
+  if(sort==='price-low') list.sort((a,b)=>a.price-b.price);
+  else if(sort==='price-high') list.sort((a,b)=>b.price-a.price);
+  else if(sort==='name') list.sort((a,b)=>a.name.localeCompare(b.name));
+
+  renderGrid(list);
+}
+
+function renderGrid(list){
   const grid = document.getElementById('productGrid');
   if(!grid) return;
-  const list = currentCat==='All' ? PRODUCTS : PRODUCTS.filter(p=>p.category===currentCat);
+  if(list === undefined) list = currentCat==='All' ? PRODUCTS : PRODUCTS.filter(p=>p.category===currentCat);
   document.getElementById('resultCount').textContent = list.length + ' items';
-  grid.innerHTML = list.map(p=>{
+  if(!list.length){
+    grid.innerHTML = '<div class="empty-results">No products match your search.</div>';
+    return;
+  }
+  const wishlist = getWishlist();
+  grid.innerHTML = list.map((p,idx)=>{
     const outOfStock = p.stock <= 0;
     const lowStock = p.stock > 0 && p.stock <= 3;
+    const isWished = wishlist.includes(p.id);
     return `
-    <div class="card" id="card-${p.id}" onclick="location.href='product.html?id=${p.id}'">
+    <div class="card" id="card-${p.id}" style="animation-delay:${Math.min(idx,8)*0.04}s;" onclick="location.href='product.html?id=${p.id}'">
       ${outOfStock ? '<div class="stock-badge low">Sold Out</div>' : lowStock ? `<div class="stock-badge low">Only ${p.stock} left</div>` : ''}
+      <button class="wish-btn ${isWished?'active':''}" id="wish-${p.id}" onclick="toggleWishlist('${p.id}', event)">${isWished ? '♥' : '♡'}</button>
       <div class="card-face">
         <div class="swatch-front" style="${p.image_url ? `background-image:url('${p.image_url}'); background-size:cover; background-position:center;` : `background:${textureBG(p.texture,p.color)};`}"></div>
       </div>
@@ -487,7 +559,7 @@ function renderGrid(){
         <div class="name">${p.name}</div>
         <div class="price-row">
           <span class="price">₹${p.price}</span>
-          <button class="add-btn" id="add-${p.id}" ${outOfStock?'disabled':''} onclick="addToCart('${p.id}', event)">+</button>
+          <button class="add-btn" id="add-${p.id}" ${outOfStock?'disabled':''} onclick="${(p.sizes||p.colors) ? `location.href='product.html?id=${p.id}'` : `addToCart('${p.id}', event)`}">${(p.sizes||p.colors) ? '→' : '+'}</button>
         </div>
       </div>
     </div>`;
@@ -830,11 +902,71 @@ function restoreCartFromStorage(){
   }catch(e){}
 }
 
+/* ===================== WISHLIST ===================== */
+function getWishlist(){
+  try{ return JSON.parse(localStorage.getItem('em_wishlist') || '[]'); }catch(e){ return []; }
+}
+function setWishlist(list){ localStorage.setItem('em_wishlist', JSON.stringify(list)); }
+
+function toggleWishlist(id, e){
+  if(e) e.stopPropagation();
+  let list = getWishlist();
+  if(list.includes(id)){
+    list = list.filter(x=>x!==id);
+  } else {
+    list.push(id);
+  }
+  setWishlist(list);
+  updateWishCountBadge();
+  const btn = document.getElementById('wish-'+id);
+  if(btn){
+    const active = list.includes(id);
+    btn.classList.toggle('active', active);
+    btn.textContent = active ? '♥' : '♡';
+  }
+}
+
+function updateWishCountBadge(){
+  const count = getWishlist().length;
+  const el = document.getElementById('wishCount');
+  el.style.display = count>0 ? 'flex' : 'none';
+  el.textContent = count;
+}
+
+function openWishlist(){
+  document.getElementById('wishlistView').classList.add('open');
+  renderWishlist();
+}
+function closeWishlist(){ document.getElementById('wishlistView').classList.remove('open'); }
+
+function renderWishlist(){
+  const ids = getWishlist();
+  const content = document.getElementById('wishlistContent');
+  const products = ids.map(id=>productById[id]).filter(Boolean);
+  if(!products.length){
+    content.innerHTML = '<p style="font-size:13px; color:var(--ink-soft);">Your wishlist is empty. Tap the ♡ on any product to save it here.</p>';
+    return;
+  }
+  content.innerHTML = products.map(p=>`
+    <div class="cart-item">
+      <div class="cart-swatch" style="${p.image_url ? `background-image:url('${p.image_url}'); background-size:cover; background-position:center;` : `background:${textureBG(p.texture,p.color)};`}"></div>
+      <div class="cart-item-info">
+        <div class="name">${p.name}</div>
+        <div class="cat">${p.category} · ₹${p.price}</div>
+        <div class="qty-row">
+          <button class="qty-btn" style="width:auto; border-radius:3px; padding:0 10px;" onclick="addToCart('${p.id}', event); closeWishlist(); openCart();">Add to Bag</button>
+          <button class="remove-btn" onclick="toggleWishlist('${p.id}', event); renderWishlist();">Remove</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
 async function init(){
   await loadProducts();
   await loadNewArrivals();
   restoreCartFromStorage();
   updateCartUI();
+  updateWishCountBadge();
   await initAuth();
 
   // If we're back from a Google redirect mid-checkout, resume it
