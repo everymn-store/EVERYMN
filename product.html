@@ -37,6 +37,9 @@
 
   .product-image{width:100%; aspect-ratio:1/1; border-radius:6px; background:var(--white); border:1px solid var(--line);}
   .stock-badge{display:inline-block; margin-top:12px; font-size:11px; font-family:'IBM Plex Mono',monospace; padding:4px 10px; border-radius:10px; background:var(--rust); color:#fff;}
+  .wish-btn{position:absolute; top:12px; right:12px; width:38px; height:38px; border-radius:50%; background:rgba(250,247,241,.92); display:flex; align-items:center; justify-content:center; font-size:18px; border:1px solid var(--line); transition:transform .15s ease;}
+  .wish-btn:active{transform:scale(1.2);}
+  .wish-btn.active{color:var(--rust);}
 
   .cat{font-size:12px; text-transform:uppercase; letter-spacing:.1em; color:var(--khaki-deep); margin-bottom:8px;}
   h1{font-family:'Fraunces',serif; font-size:clamp(26px,4vw,36px); font-weight:500; margin-bottom:10px;}
@@ -148,8 +151,8 @@
 <footer>© 2026 EVERYMN. All rights reserved.</footer>
 
 <script>
-const SUPABASE_URL = 'https://camvsuouhadbeynnpmeo.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_l95Bb9_nA6SURRDwXcf0eg_wFcrxVtz';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentProduct = null;
@@ -180,6 +183,21 @@ const COLOR_HEX = {
 };
 function colorHex(name){
   return COLOR_HEX[name.trim().toLowerCase()] || '#A8A29A';
+}
+
+function getWishlist(){
+  try{ return JSON.parse(localStorage.getItem('em_wishlist') || '[]'); }catch(e){ return []; }
+}
+function toggleWishlist(){
+  let list = getWishlist();
+  const id = currentProduct.id;
+  if(list.includes(id)) list = list.filter(x=>x!==id);
+  else list.push(id);
+  localStorage.setItem('em_wishlist', JSON.stringify(list));
+  const btn = document.getElementById('wishBtn');
+  const active = list.includes(id);
+  btn.classList.toggle('active', active);
+  btn.textContent = active ? '♥' : '♡';
 }
 
 function getCart(){
@@ -314,8 +332,9 @@ async function loadProduct(){
 
   area.innerHTML = `
     <div class="wrap">
-      <div>
+      <div style="position:relative;">
         <div class="product-image" style="${imageStyle}"></div>
+        <button class="wish-btn" id="wishBtn" onclick="toggleWishlist()">${getWishlist().includes(data.id) ? '♥' : '♡'}</button>
         ${outOfStock ? '<span class="stock-badge">Sold Out</span>' : (!currentVariants.length && data.stock<=3 ? `<span class="stock-badge">Only ${data.stock} left</span>` : '')}
       </div>
       <div>
